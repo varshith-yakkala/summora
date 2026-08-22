@@ -31,3 +31,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Tesseract language data (downloaded at runtime, not committed)
+*.traineddata
+
+# Test fixtures (binary samples)
+fixtures/sample-image.png
