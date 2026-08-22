@@ -107,12 +107,12 @@ export default function Home() {
       const decoder = new TextDecoder('utf-8');
       let buffer = '';
 
-      // Set a 30-second read timeout for each chunk to detect silent connection drops (e.g. Vercel timeouts)
+      // Set a 90-second read timeout for each chunk to detect true network disconnects
       const readWithTimeout = async () => {
         return Promise.race([
           reader.read(),
           new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('TIMEOUT')), 30000)
+            setTimeout(() => reject(new Error('TIMEOUT')), 90000)
           ),
         ]);
       };
@@ -123,7 +123,7 @@ export default function Home() {
           chunk = await readWithTimeout();
         } catch (e: any) {
           if (e.message === 'TIMEOUT') {
-            throw new Error('Server connection timed out (likely exceeded Vercel serverless limits for OCR).');
+            throw new Error('Connection timed out while waiting for server response. Please check your network and try again.');
           }
           throw e;
         }
