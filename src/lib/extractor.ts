@@ -68,6 +68,11 @@ async function extractImageOcr(
   const worker = await createWorker('eng', 1, {
     langPath: os.tmpdir(),
     cachePath: os.tmpdir(),
+    logger: (m) => {
+      if (m.status === 'recognizing text' && m.progress) {
+        onProgress?.('ocr', `Running OCR on image: ${Math.round(m.progress * 100)}%`);
+      }
+    },
   });
   try {
     const ret = await worker.recognize(imageBuffer);
@@ -130,6 +135,11 @@ async function extractScannedPdfOcr(
   const worker = await createWorker('eng', 1, {
     langPath: os.tmpdir(),
     cachePath: os.tmpdir(),
+    logger: (m) => {
+      if (m.status === 'recognizing text' && m.progress) {
+        onProgress?.('ocr', `Running OCR scanning... ${Math.round(m.progress * 100)}%`);
+      }
+    },
   });
   const pageTexts: string[] = [];
   let totalConfidence = 0;
