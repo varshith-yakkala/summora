@@ -147,17 +147,22 @@ export async function POST(req: NextRequest) {
             detail: 'Analyzing document structure & context',
           });
 
-          // Stage 4: Summarizing
-          sendEvent('stage', {
-            stage: 'summarizing',
-            status: 'active',
-            detail: 'Preparing grounded Short, Medium, and Long summaries',
-          });
+          // Active keep-alive heartbeat every 1.5s to prevent Vercel proxy buffering / stream drops
+          const keepAlive = setInterval(() => {
+            try {
+              sendEvent('heartbeat', { ts: Date.now() });
+            } catch (e) {}
+          }, 1500);
 
-          const summaryResult = await summarizeDocument(
-            extractionResult.extractedText,
-            extractionResult.meta
-          );
+          let summaryResult;
+          try {
+            summaryResult = await summarizeDocument(
+              extractionResult.extractedText,
+              extractionResult.meta
+            );
+          } finally {
+            clearInterval(keepAlive);
+          }
 
           sendEvent('stage', {
             stage: 'summarizing',
