@@ -22,7 +22,7 @@ export interface ExtractionResult {
 async function extractWithGeminiVision(
   imageBuffer: Buffer,
   mimeType: string = 'image/png'
-): Promise<{ text: string; confidence: number } | null> {
+): Promise<{ text: string; confidence: number | null } | null> {
   const apiKey = process.env.AI_API_KEY;
   if (!apiKey || apiKey.trim() === '') {
     return null;
@@ -52,16 +52,15 @@ async function extractWithGeminiVision(
 
   const prompt = `Extract all visible and readable text, numbers, headings, bullet points, tables, and notes from this document image with exact fidelity.
 Preserve paragraph structure and line breaks.
-Return ONLY the raw extracted text from the document. Do not include introductory notes, markdown code fences, or conversational filler.`;
+Return ONLY the raw extracted text from the document. If there is no readable text in this image, return an empty response. Do not include introductory notes, markdown code fences, or conversational filler.`;
 
   for (const m of modelsToTry) {
     try {
       const model = genAI.getGenerativeModel({ model: m });
       const result = await model.generateContent([prompt, part]);
       const text = result.response.text().trim();
-      if (text && text.length > 0) {
-        return { text, confidence: 96 };
-      }
+      // AI successfully inspected image — return the extracted text (even if empty, meaning zero text detected)
+      return { text, confidence: text.length > 0 ? 96 : null };
     } catch (err: any) {
       if (err.status !== 404 && !err.message?.includes('404')) {
         // Continue to try next model or fallback
@@ -128,10 +127,10 @@ async function extractImageOcr(
   // Strategy 1: Fast & resilient Gemini Vision OCR (<2 seconds, zero worker timeout issues on Vercel)
   try {
     const aiOcr = await extractWithGeminiVision(imageBuffer, fileType);
-    if (aiOcr && aiOcr.text.trim().length > 0) {
+    if (aiOcr !== null) {
       const cleanText = preprocessText(aiOcr.text);
       const wordCount = cleanText ? cleanText.split(/\s+/).filter(Boolean).length : 0;
-      onProgress?.('ocr', 'Optical character recognition complete');
+      onProgress?.('ocr', wordCount > 0 ? 'Optical character recognition complete' : 'Image analysis complete');
       return {
         extractedText: cleanText,
         meta: {

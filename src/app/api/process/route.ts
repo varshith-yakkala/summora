@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
           if (!extractionResult.extractedText || extractionResult.extractedText.trim().length === 0) {
             sendEvent('error', {
               code: 'EXTRACTION_FAILED',
-              message: "We couldn't extract readable text from this document.",
+              message: "We couldn't extract readable text from this document. Please ensure the image or PDF contains clear, readable text.",
               recoverable: false,
             });
             controller.close();
