@@ -62,6 +62,10 @@ Return ONLY the raw extracted text from the document. If there is no readable te
       // AI successfully inspected image — return the extracted text (even if empty, meaning zero text detected)
       return { text, confidence: text.length > 0 ? 96 : null };
     } catch (err: any) {
+      // If rate limited or quota exceeded, throw immediately to inform the user
+      if (err.status === 429 || err.message?.includes('quota') || err.message?.includes('429')) {
+        throw err;
+      }
       if (err.status !== 404 && !err.message?.includes('404')) {
         // Continue to try next model or fallback
       }
@@ -141,12 +145,15 @@ async function extractImageOcr(
         },
       };
     }
-  } catch (err) {
+  } catch (err: any) {
+    if (err.status === 429 || err.message?.includes('quota') || err.message?.includes('429')) {
+      throw err;
+    }
     // Fall back to Tesseract
   }
 
-  // Strategy 2: Tesseract.js fallback
-  onProgress?.('ocr', 'Running optical character recognition');
+  // Strategy 2: Tesseract.js fallback with 12s safety timeout
+  onProgress?.('ocr', 'Scanning image text layers');
   return await extractTesseractOcr(imageBuffer, onProgress);
 }
 
@@ -166,7 +173,13 @@ async function extractTesseractOcr(
       },
     });
 
-    const ret = await worker.recognize(imageBuffer);
+    const ret = await Promise.race([
+      worker.recognize(imageBuffer),
+      new Promise<any>((_, reject) =>
+        setTimeout(() => reject(new Error('OCR scan timed out')), 12000)
+      ),
+    ]);
+
     await worker.terminate();
 
     const rawText = ret.data.text || '';
