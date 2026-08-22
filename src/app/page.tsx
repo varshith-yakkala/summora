@@ -107,8 +107,28 @@ export default function Home() {
       const decoder = new TextDecoder('utf-8');
       let buffer = '';
 
+      // Set a 30-second read timeout for each chunk to detect silent connection drops (e.g. Vercel timeouts)
+      const readWithTimeout = async () => {
+        return Promise.race([
+          reader.read(),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('TIMEOUT')), 30000)
+          ),
+        ]);
+      };
+
       while (true) {
-        const { value, done } = await reader.read();
+        let chunk;
+        try {
+          chunk = await readWithTimeout();
+        } catch (e: any) {
+          if (e.message === 'TIMEOUT') {
+            throw new Error('Server connection timed out (likely exceeded Vercel serverless limits for OCR).');
+          }
+          throw e;
+        }
+
+        const { value, done } = chunk;
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });

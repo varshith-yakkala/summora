@@ -59,11 +59,16 @@ export async function extractDocumentText(
   }
 }
 
+import os from 'os';
+
 async function extractImageOcr(
   imageBuffer: Buffer,
   onProgress?: (stage: string, detail?: string) => void
 ): Promise<ExtractionResult> {
-  const worker = await createWorker('eng');
+  const worker = await createWorker('eng', 1, {
+    langPath: os.tmpdir(),
+    cachePath: os.tmpdir(),
+  });
   try {
     const ret = await worker.recognize(imageBuffer);
     await worker.terminate();
@@ -122,7 +127,10 @@ async function extractScannedPdfOcr(
     };
   }
 
-  const worker = await createWorker('eng');
+  const worker = await createWorker('eng', 1, {
+    langPath: os.tmpdir(),
+    cachePath: os.tmpdir(),
+  });
   const pageTexts: string[] = [];
   let totalConfidence = 0;
 
